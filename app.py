@@ -1,6 +1,4 @@
 
-# app.py
-
 import pandas as pd
 import numpy as np
 import requests
@@ -11,52 +9,44 @@ from flask import Flask, render_template, jsonify
 
 app = Flask(__name__)
 
-# =====================
-# Funções Auxiliares
-# =====================
-
 def get_ibov_spot():
     ibov = yf.Ticker("^BVSP")
-    return ibov.history(period="1d").iloc[-1]['Close']
+    data = ibov.history(period="1d")
+    if data.empty:
+        raise ValueError("Não foi possível obter dados do IBOV")
+    return data.iloc[-1]["Close"]
 
-def get_win_futuro():
-    win = yf.Ticker("WIN=F")  # Se não funcionar, substituir por outra fonte
-    return win.history(period="1d").iloc[-1]['Close']
+def get_win_futuro_simulado(spot):
+    # Como fallback, simulamos um prêmio de 250 pontos sobre o spot
+    return spot + 250
 
 def get_taxa_juros():
-    # Taxa de DI aproximada via CDI anual – pode ser substituída por API
-    return 0.1325  # 13,25% a.a.
+    return 0.1325  # CDI anual estimado
 
 def get_taxa_aluguel():
-    return 0.015  # 1,5% a.a. estimado para carteira Ibovespa
+    return 0.015  # Estimativa do aluguel
 
 def calcular_preco_futuro_justo(spot, juros, aluguel, dias):
-    r = juros
-    k = aluguel
     t = dias / 252
-    return spot * np.exp((r - k) * t)
+    return spot * np.exp((juros - aluguel) * t)
 
 def identificar_mispricing(futuro_obs, futuro_justo):
     diff = futuro_obs - futuro_justo
-    if diff > 100:  # Arbitragem por financiamento
+    if diff > 100:
         return 'Venda Futuro / Compra Spot', diff
-    elif diff < -100:  # Arbitragem por reversão
+    elif diff < -100:
         return 'Compra Futuro / Venda Spot', diff
     else:
         return 'Sem Arbitragem', diff
-
-# =====================
-# Rota Principal
-# =====================
 
 @app.route("/")
 def index():
     try:
         spot = get_ibov_spot()
-        futuro = get_win_futuro()
+        futuro = get_win_futuro_simulado(spot)
         juros = get_taxa_juros()
         aluguel = get_taxa_aluguel()
-        dias = 15  # aproximado até vencimento
+        dias = 15
 
         futuro_justo = calcular_preco_futuro_justo(spot, juros, aluguel, dias)
         sinal, mispricing = identificar_mispricing(futuro, futuro_justo)
@@ -74,30 +64,27 @@ def index():
     except Exception as e:
         return f"Erro: {e}"
 
-# =====================
-# API para dados JSON
-# =====================
-
 @app.route("/api/mispricing")
 def api_mispricing():
-    spot = get_ibov_spot()
-    futuro = get_win_futuro()
-    juros = get_taxa_juros()
-    aluguel = get_taxa_aluguel()
-    dias = 15
-    futuro_justo = calcular_preco_futuro_justo(spot, juros, aluguel, dias)
-    sinal, mispricing = identificar_mispricing(futuro, futuro_justo)
-    return jsonify({
-        "spot": round(spot, 2),
-        "futuro": round(futuro, 2),
-        "futuro_justo": round(futuro_justo, 2),
-        "sinal": sinal,
-        "mispricing": round(mispricing, 2)
-    })
+    try:
+        spot = get_ibov_spot()
+        futuro = get_win_futuro_simulado(spot)
+        juros = get_taxa_juros()
+        aluguel = get_taxa_aluguel()
+        dias = 15
 
-# =====================
-# Run
-# =====================
+        futuro_justo = calcular_preco_futuro_justo(spot, juros, aluguel, dias)
+        sinal, mispricing = identificar_mispricing(futuro, futuro_justo)
+
+        return jsonify({
+            "spot": round(spot, 2),
+            "futuro": round(futuro, 2),
+            "futuro_justo": round(futuro_justo, 2),
+            "sinal": sinal,
+            "mispricing": round(mispricing, 2)
+        })
+    except Exception as e:
+        return jsonify({"erro": str(e)})
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=3000, debug=True)
+    app.run(host='0.0.0.0', port=3000)
