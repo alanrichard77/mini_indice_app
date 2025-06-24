@@ -1,0 +1,35 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Mini Índice - Arbitragem</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #f0f0f0; text-align: center; }
+        .card { background-color: #1e1e1e; padding: 20px; margin: 20px auto; border-radius: 10px; width: 300px; box-shadow: 0 0 10px #333; }
+        h1 { color: #00e676; }
+        .valor { font-size: 24px; font-weight: bold; margin-top: 10px; }
+        .sinal { font-size: 20px; margin-top: 20px; color: #03a9f4; }
+    </style>
+</head>
+<body>
+    <h1>Arbitragem Mini Índice Futuro</h1>
+    <div class="card">
+        <div>Ibovespa Spot</div>
+        <div class="valor">{{ dados.spot }}</div>
+    </div>
+    <div class="card">
+        <div>Mini Índice Futuro (WIN)</div>
+        <div class="valor">{{ dados.futuro }}</div>
+    </div>
+    <div class="card">
+        <div>Futuro Justo Teórico</div>
+        <div class="valor">{{ dados.futuro_justo }}</div>
+    </div>
+    <div class="card sinal">
+        <div>Sinal:</div>
+        <div>{{ dados.sinal }}</div>
+        <div>Mispricing: {{ dados.mispricing }}</div>
+    </div>
+</body>
+</html>
